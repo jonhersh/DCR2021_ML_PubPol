@@ -1,7 +1,7 @@
 # DCR2021_ML_PubPol
 
 #### Dec 8th
-#### Instructor: Jonathan Hersh, PhD (hersh@chapman.edu)
+#### Instructor: Jonathan Hersh (hersh@chapman.edu)
 
 ## Getting Started
 
