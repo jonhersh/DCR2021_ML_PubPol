@@ -49,8 +49,9 @@ If you have never used Github, don't worry. You can either clone the repository,
 
 ### Loading Project in R
 
+```
 install.packages('usethis')
 install.packages('tidyverse')
 
 newProject <- usethis::use_course('https://github.com/jonhersh/DCR2021_ML_PubPol/archive/main.zip')
-
+```
