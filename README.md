@@ -27,7 +27,7 @@ There are two ways you can run R and [RStudio](https://rstudio.com/), either loc
 
 If you would like to install and run R locally please install the following programs:
 
-* RStudio Desktop 1.3.1093 [link](https://www.rstudio.com/products/rstudio/download/#download)
+* RStudio Desktop 2021.09.1+372 [link](https://www.rstudio.com/products/rstudio/download/#download)
 * R 4.1.1 [link](https://cran.r-project.org/bin/windows/base/)
 
 ### Running R in a Web Browser
