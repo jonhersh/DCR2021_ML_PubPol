@@ -12,7 +12,7 @@ Hello! These are the materials for the Dec 8th R and Machine Learning training. 
 3. Regularized regression with Lasso, Ridge, and [ElasticNet](https://glmnet.stanford.edu/articles/glmnet.html)
 4. Binary classification and diagnostics
 5. Regression trees and random forests 
-6. Communicating models in [Shiny](https://shiny.rstudio.com/) and [flexdashboard](https://pkgs.rstudio.com/flexdashboard/) 
+6. Data Pipelines and Dashboarding in [Shiny](https://shiny.rstudio.com/) and [flexdashboard](https://pkgs.rstudio.com/flexdashboard/) 
 
 
 ------
