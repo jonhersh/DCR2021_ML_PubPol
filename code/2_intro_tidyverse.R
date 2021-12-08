@@ -10,9 +10,10 @@ source('code/1_data_prep.r')
 # GLIMPSE to summarize data
 # ------------------------------------------------
 # let's summarize the IDB poverty data using the glimpse function
-# from https://www.kaggle.com/c/costa-rican-household-poverty-prediction/data?select=codebook.csv
 
 glimpse(CR_dat)
+
+# from https://www.kaggle.com/c/costa-rican-household-poverty-prediction/data?select=codebook.csv
 
 
 # ------------------------------------------------

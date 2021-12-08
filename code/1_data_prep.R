@@ -2,8 +2,8 @@
 # Setup
 # ------------------------------------------------
 # Please download and install:
-#   - R 4.0.3
-#   - R Studio 1.4.1056
+#   - R 4.1.1
+#   - RStudio Desktop 2021.09.1+372
 
 # ------------------------------------------------
 # Packages to Install

@@ -1,0 +1,485 @@
+---
+title: "Belize Financial Inclusion"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    storyboard: true
+    theme: cosmo
+    vertical_layout: fill
+    source_code: "https://github.com/HershLab/Belize-Financial-Inclusion"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+# Mapping
+library(tmap)
+library(tmaptools)
+library(leaflet)
+# Geo
+library(sp)
+library(sf) 
+library(spdep)
+library(rgeos)
+library(lwgeom)
+# Dashboard
+library(DT)
+library(flexdashboard)
+# Plots
+library(viridis)
+library(scales)
+library(plotly)
+library(ggthemes)
+
+options(digits=10)
+
+# Reading in data
+internet <- read_csv("mean_internet_access_ED.csv")
+census <- read_csv("Census_preds_EDS.csv")
+sub_areas <- st_read("ED_2018_FIPS.shp")
+poverty <- read_csv("CensusEDPreds.csv")
+access <- read.csv("FI_Access_Points_Clean.csv", stringsAsFactors = FALSE, header = TRUE)
+access$Type = as.factor(access$Type)
+
+# Merging data
+poverty_areas <- merge(sub_areas, poverty, by.x='FIPS', by.y = "fips", all.x = TRUE)
+sub_areas <- merge(sub_areas, internet, by.x='FIPS', by.y = "fips", all.x = TRUE)
+sub_areas <- merge(sub_areas, census, by.x='FIPS', by.y = "fips", all.x = TRUE)
+
+# Create subset that excludes ocean geographies
+ocean <- c(51200201,61200217)
+sub_areas <- sub_areas %>% drop_na(Area)
+sub_areas <- sub_areas %>% filter(FIPS %in% ocean == FALSE)
+poverty_areas <- poverty_areas %>% drop_na(Area)
+poverty_areas <- poverty_areas %>% filter(FIPS %in% ocean == FALSE)
+
+# Calculate population density
+Area_Equidistant <- "+proj=eqdc +lat_0=0 +lon_0=0 +lat_1=33 +lat_2=45 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m no_defs"
+sub_areas <- sub_areas %>% mutate(m2 = st_transform(sub_areas, Area_Equidistant) %>% st_area())
+sub_areas <- sub_areas %>% mutate(km2 = m2 / 1e+6)
+sub_areas <- sub_areas %>% mutate(pop_density = population/km2)
+poverty_areas <- poverty_areas %>% mutate(m2 = st_transform(poverty_areas, Area_Equidistant) %>% st_area())
+poverty_areas <- poverty_areas %>% mutate(km2 = m2 / 1e+6)
+poverty_areas <- poverty_areas %>% mutate(pop_density = population/km2)
+
+# Convert coordinates to lat/lon
+sub_areas <- st_transform_proj(sub_areas, "+proj=longlat")
+poverty_areas <- st_transform_proj(poverty_areas, "+proj=longlat")
+
+# Display data table (for presentation purposes in dashboard) --------------------------------
+census_dt <- census %>% mutate(
+  preds_no_bank_acct = percent(x = preds_no_bank_acct, accuracy=0.01, suffix = "%"),
+  no_bank_no_money = percent(x = no_bank_no_money, accuracy=0.01, suffix = "%"),
+  used_online_banking = percent(x = used_online_banking,accuracy=0.01, suffix = "%"),
+  borrowed_formally = percent(x = borrowed_formally, accuracy=0.01, suffix = "%"),
+  no_bank_too_far = percent(x = no_bank_too_far, accuracy=0.01, suffix = "%"))
+
+# Poverty Data --------------------------------
+poverty_df <- poverty_areas
+poverty_df <- poverty_df %>% rename(ED = ED_2018) 
+poverty_df <- poverty_df %>% mutate(Predicted_Val = round(Poor_Ensemble_RPR20,4))
+poverty_df <- poverty_df %>% mutate(Predicted = percent(x = Predicted_Val, accuracy= 0.01, suffix = "%"))
+
+# No bank, not enough money Data --------------------------------
+not_enough_money_df <- sub_areas
+not_enough_money_df <- not_enough_money_df %>% rename(ED = ED_2018) 
+not_enough_money_df <- not_enough_money_df %>% mutate(Predicted_Val = round(no_bank_no_money,4))
+not_enough_money_df <- not_enough_money_df %>% mutate(Predicted = percent(x = Predicted_Val, accuracy= 0.01, suffix = "%"))
+
+# No bank Data --------------------------------
+no_bank_df <- sub_areas
+no_bank_df <- no_bank_df %>% rename(ED = ED_2018)
+no_bank_df <- no_bank_df %>% mutate(Predicted_Val = round(preds_no_bank_acct,4))
+no_bank_df <- no_bank_df %>% mutate(Predicted = percent(x = Predicted_Val, accuracy= 0.01, suffix = "%"))
+
+# Used online banking Data --------------------------------
+used_online_banking_df <- sub_areas
+used_online_banking_df <- used_online_banking_df %>% rename(ED = ED_2018) 
+used_online_banking_df <- used_online_banking_df %>% mutate(Predicted_Val = round(used_online_banking,4))
+used_online_banking_df <- used_online_banking_df %>% mutate(Predicted = percent(x = Predicted_Val, accuracy= 0.01, suffix = "%"))
+
+# Borrowed formally Data --------------------------------
+borrowed_formally_df <- sub_areas
+borrowed_formally_df <- borrowed_formally_df %>% rename(ED = ED_2018) 
+borrowed_formally_df <- borrowed_formally_df %>% mutate(Predicted_Val = (round(borrowed_formally,4)))
+borrowed_formally_df <- borrowed_formally_df %>% mutate(Predicted = percent(x = Predicted_Val, accuracy= 0.01, suffix = "%"))
+
+# Borrowed formally Data --------------------------------
+no_bank_too_far_df <- sub_areas
+no_bank_too_far_df <- no_bank_too_far_df %>% rename(ED = ED_2018) 
+no_bank_too_far_df <- no_bank_too_far_df %>% mutate(Predicted_Val = (round(no_bank_too_far,4)))
+no_bank_too_far_df <- no_bank_too_far_df %>% mutate(Predicted = percent(x = Predicted_Val, accuracy= 0.01, suffix = "%"))
+```
+
+```{r}
+# Function to determine color of marker
+getColor <- function(access) {
+  sapply(access$Type, function(Type) {
+  if(Type == "ATM") {
+    "cadetblue"
+  } else if(Type == "Branch") {
+    "blue"
+  } else {
+    "lightblue"
+  } })
+}
+
+# Function to determine icon for marker
+getIcon <- function(access) {
+  sapply(access$Type, function(Type) {
+  if(Type == "ATM") {
+    'credit-card'
+  } else if(Type == "Branch") {
+    'university'
+  } else {
+    'building'
+  } })
+}
+
+# Generate icons
+icons <- awesomeIcons(
+  icon = getIcon(access),
+  iconColor = '#FFFFFF',
+  library = 'fa',
+  markerColor = getColor(access),
+) 
+```
+
+### Poverty Rate (below 20% income decile) {data-commentary-width=400}
+
+```{r}
+map_poverty <- tm_shape(poverty_df) +
+          tm_polygons(col = "Poor_Ensemble_RPR20", style = "pretty",
+                      title = "Poverty Rate (below<br> 20% income decile)",
+                      textNA = "No Data Available",
+                      popup.vars = c("ED"),
+                      id = c("Predicted"),
+                      interactive = TRUE,
+                      border.alpha = 0.7,
+                      palette = "Oranges",
+                      lwd = 0.5) +
+          tm_layout(scale = 1, frame = FALSE) +
+          tm_view(view.legend.position = c("right","bottom"))
+
+map_poverty <- tmap_leaflet(map_poverty)
+require(leaflet)
+map_poverty <- map_poverty %>% leaflet::addAwesomeMarkers(data = access, ~Long, ~Lat, icon = icons, 
+                                                          popup = paste("Name: ", access$Name, "<br>",
+                                                                        "District: ", access$District, "<br>",
+                                                                        "Type: ", access$Type))
+map_poverty
+```
+
+***
+
+These poverty rates were generated using a poverty line defined as 20% of national income. They can be interpreted as share of households in the ED that are below 20% of national income. For more details see: https://publications.iadb.org/en/mapping-income-poverty-in-belize-using-satellite-features-and-machine-learning
+
+```{r, fig.width=4,fig.height=5}
+a <- ggplot(poverty_df, aes(x=Poor_Ensemble_RPR20)) +
+  geom_histogram(color="#ff5c04",
+                 fill="#ffcc94") +
+  labs(x = "Poverty Rate (as 20% of National Income)",
+       y = "Frequency",
+       title = "Histogram: Poverty Rate") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(size = 0.25, linetype = 'solid',
+                                colour = "lightgrey"),
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "lightgrey"),
+    plot.title = element_text(hjust = 0.5, vjust = -10, color = "#5a5a5a", size = 11, face = "bold"),
+    axis.title.x = element_text(color = "#5a5a5a", size = 8),
+    axis.title.y = element_text(color = "#5a5a5a", size = 8)
+  )
+
+ggplotly(a, tooltip = "count")
+```
+
+
+### Households With No Bank Account (Estimated) {data-commentary-width=400}
+
+```{r}
+map_no_bank <- tm_shape(no_bank_df) +
+  tm_polygons(col = "preds_no_bank_acct", style = "fixed",
+              breaks=c(0,.1,.2,.3,.4,.5,.6,.7,.8,Inf),
+              title = "Predicted No Bank Account<br> (Estimated)",
+              textNA = "No Data Available",
+              popup.vars = c("ED"),
+              id = c("Predicted"),
+              interactive = TRUE,
+              border.alpha = 0.7,
+              palette="Blues",
+              lwd = 0.5) +
+  tm_layout(scale = 1, frame = FALSE) +
+  tm_view(view.legend.position = c("right","bottom"))
+
+map_no_bank <- tmap_leaflet(map_no_bank)
+require(leaflet)
+map_no_bank <- map_no_bank %>% leaflet::addAwesomeMarkers(data = access, ~Long, ~Lat, icon = icons, 
+                                                          popup = paste("Name: ", access$Name, "<br>",
+                                                                        "District: ", access$District, "<br>",
+                                                                        "Type: ", access$Type))
+map_no_bank
+# map_no_bank <- tmap_leaflet(map_no_bank,mode="view",show=T)
+```
+
+***
+
+Individuals were asked: Do you, either by yourself or together with someone else, currently have an account at a bank (for example, Atlantic or Belize Bank or any other bank), or a credit union (for example Holy Redeemer or any other credit union)?
+
+```{r, fig.width=4,fig.height=5}
+b <- ggplot(no_bank_df, aes(x=preds_no_bank_acct)) +
+  geom_histogram(color="#0874bc", 
+                 fill="#c4dcf4") +
+  labs(x = "% of Households with No Bank Account", 
+       y = "Frequency", 
+       title = "Histogram: Percent of Households \n with No Bank Account") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(size = 0.25, linetype = 'solid',
+                                colour = "lightgrey"), 
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "lightgrey"),
+    plot.title = element_text(hjust = 0.5, vjust = -10, color = "#5a5a5a", size = 11, face = "bold"),
+    axis.title.x = element_text(color = "#5a5a5a", size = 8),
+    axis.title.y = element_text(color = "#5a5a5a", size = 8)
+  )
+
+ggplotly(b, tooltip = "count")
+```
+
+### Households Not Using Banks Due To Not Enough Money (Estimated) {data-commentary-width=400}
+
+```{r}
+map_not_enough_money <- tm_shape(not_enough_money_df) +
+  tm_polygons(col = "no_bank_no_money", style = "fixed",
+              breaks=c(-Inf,.20,.30,.40,Inf),
+              title = "Households Not Using Bank Accounts<br> Due to Not Enough Money (Estimated)",
+              textNA = "No Data Available",
+              popup.vars = c("ED"),
+              id = c("Predicted"),
+              interactive = TRUE,
+              palette = "Greens",
+              lwd = 0.5) +
+  tm_layout(scale = 1, frame = FALSE) +
+  tm_view(view.legend.position = c("right","bottom"))
+
+map_not_enough_money <- tmap_leaflet(map_not_enough_money)
+require(leaflet)
+map_not_enough_money <- map_not_enough_money %>% leaflet::addAwesomeMarkers(data = access, ~Long, ~Lat, icon = icons, 
+                                                          popup = paste("Name: ", access$Name, "<br>",
+                                                                        "District: ", access$District, "<br>",
+                                                                        "Type: ", access$Type))
+map_not_enough_money
+```
+
+***
+
+Individuals were asked: Please tell me whether each of the following is a reason why you, personally, do not have an account at a bank or a credit union. Is it because you don't have enough money to use financial institutions?
+
+```{r, fig.width=4,fig.height=5}
+c <- ggplot(not_enough_money_df, aes(x=no_bank_no_money)) +
+  geom_histogram(color="#088c3c", 
+                 fill="#a8e4a4") +
+  labs(x = "% of Households Not Using Banks Due To Not Enough Money", 
+       y = "Frequency", 
+       title = "Histogram: Households Not Using \n Banks Due To Not Enough Money") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(size = 0.25, linetype = 'solid',
+                                colour = "lightgrey"), 
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "lightgrey"),
+    plot.title = element_text(hjust = 0.5, vjust = -10, color = "#5a5a5a", size = 11, face = "bold"),
+    axis.title.x = element_text(color = "#5a5a5a", size = 8),
+    axis.title.y = element_text(color = "#5a5a5a", size = 8)
+  )
+
+ggplotly(c, tooltip = "count")
+```
+
+### Households Who Have Borrowed From Formal Banks (Estimated) {data-commentary-width=400}
+
+```{r}
+map_borrowed_formally <- tm_shape(borrowed_formally_df) +
+          tm_polygons(col = "borrowed_formally", style = "pretty",
+                      title = "Households Who Have Borrowed<br> From Formal Banks (Estimated)",
+                      textNA = "No Data Available",
+                      popup.vars = c("ED"),
+                      id = c("Predicted"),
+                      interactive = TRUE,
+                      palette = "Reds",
+                      lwd = 0.5) +
+          tm_layout(scale = 1, frame = FALSE) +
+          tm_view(view.legend.position = c("right","bottom"))
+
+map_borrowed_formally <- tmap_leaflet(map_borrowed_formally)
+require(leaflet)
+map_borrowed_formally <- map_borrowed_formally %>% leaflet::addAwesomeMarkers(data = access, ~Long, ~Lat, icon = icons, 
+                                                          popup = paste("Name: ", access$Name, "<br>",
+                                                                        "District: ", access$District, "<br>",
+                                                                        "Type: ", access$Type))
+map_borrowed_formally
+```
+
+***
+
+Individuals were asked: in the past 12 months, have you, by yourself or together with someone else, borrowed any money from any of the following sources? From a bank, credit union or another type of formal financial institution.
+
+```{r, fig.width=4,fig.height=5}
+d <- ggplot(borrowed_formally_df, aes(x=borrowed_formally)) +
+  geom_histogram(color="#ff7c5c", 
+                 fill="#ffd4c4") +
+  labs(x = "% of Households Who Have Borrowed From Formal Banks", 
+       y = "Frequency", 
+       title = "Histogram: Households Who Have \n Borrowed From Formal Banks") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(size = 0.25, linetype = 'solid',
+                                colour = "lightgrey"), 
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "lightgrey"),
+    plot.title = element_text(hjust = 0.5, vjust = -10, color = "#5a5a5a", size = 11, face = "bold"),
+    axis.title.x = element_text(color = "#5a5a5a", size = 8),
+    axis.title.y = element_text(color = "#5a5a5a", size = 8)
+  )
+
+ggplotly(d, tooltip = "count")
+```
+
+
+### Households Who Have Used Online Banking (Estimated) {data-commentary-width=400}
+
+```{r}
+map_used_online_banking <- tm_shape(used_online_banking_df) +
+  tm_polygons(col = "used_online_banking", style = "fixed",
+              breaks=c(0,.1,.2,.3,.4,.5,.6,.7,.8,Inf),
+              title = "Households Who Have Used<br> Online Banking (Estimated)", 
+              textNA = "No Data Available",
+              popup.vars = c("ED"),
+              id = c("Predicted"),
+              interactive = TRUE,
+              palette="Purples",
+              lwd = 0.5) +
+  tm_layout(scale = 1, frame = FALSE) +
+  tm_view(view.legend.position = c("right","bottom"))
+
+map_used_online_banking <- tmap_leaflet(map_used_online_banking)
+require(leaflet)
+map_used_online_banking <- map_used_online_banking %>% leaflet::addAwesomeMarkers(data = access, ~Long, ~Lat, icon = icons, 
+                                                          popup = paste("Name: ", access$Name, "<br>",
+                                                                        "District: ", access$District, "<br>",
+                                                                        "Type: ", access$Type))
+map_used_online_banking
+```
+
+***
+
+Individuals were asked: In the past 12 months, have you ever made a transaction using any of the following, whether with your own account or another person’s account? Internet / Online banking website.
+
+```{r, fig.width=4,fig.height=5}
+e <- ggplot(used_online_banking_df, aes(x=used_online_banking)) +
+  geom_histogram(color="#602494", 
+                 fill="#c0bcdc") +
+  labs(x = "% of Households Who Have Used Online Banking", 
+       y = "Frequency", 
+       title = "Histogram: Households Who Have \n Used Online Banking") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(size = 0.25, linetype = 'solid',
+                                colour = "lightgrey"),
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "lightgrey"),
+    plot.title = element_text(hjust = 0.5, vjust = -10, color = "#5a5a5a", size = 11, face = "bold"),
+    axis.title.x = element_text(color = "#5a5a5a", size = 8),
+    axis.title.y = element_text(color = "#5a5a5a", size = 8)
+  )
+
+ggplotly(e, tooltip = "count")
+```
+
+
+### Households Not Using Banks Due To Banks Too Far (Estimated) {data-commentary-width=400}
+
+```{r}
+map_no_bank_too_far <- tm_shape(no_bank_too_far_df) +
+  tm_polygons(col = "no_bank_too_far", style = "fixed",
+              # breaks=c(0,.1,.2,.3,.4,.5,.6,.7,.8,Inf),
+              breaks=c(0,.05,.1,.15,.2,Inf),
+              title = "Households Not Using Banks <br> Due To Banks Too Far (Estimated)", 
+              textNA = "No Data Available",
+              popup.vars = c("ED"),
+              id = c("Predicted"),
+              interactive = TRUE,
+              palette="RdPu",
+              lwd = 0.5) +
+  tm_layout(scale = 1, frame = FALSE) +
+  tm_view(view.legend.position = c("right","bottom"))
+
+map_no_bank_too_far <- tmap_leaflet(map_no_bank_too_far)
+require(leaflet)
+map_no_bank_too_far <- map_no_bank_too_far %>% leaflet::addAwesomeMarkers(data = access, ~Long, ~Lat, icon = icons, 
+                                                          popup = paste("Name: ", access$Name, "<br>",
+                                                                        "District: ", access$District, "<br>",
+                                                                        "Type: ", access$Type))
+map_no_bank_too_far
+```
+
+***
+
+Individuals were asked: Please tell me whether each of the following is a reason why you, personally, do not have an account at a bank or a credit union. Is it because financial institutions are too far away?
+
+```{r, fig.width=4,fig.height=5}
+e <- ggplot(no_bank_too_far_df, aes(x=no_bank_too_far)) +
+  geom_histogram(color="#ffbcbc", 
+                 fill="#ffe4e4") +
+  labs(x = "% of Households Not Using Banks Due To Banks Too Far", 
+       y = "Frequency", 
+       title = "Histogram: Households Not Using Banks \n Due To Banks Too Far") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(size = 0.25, linetype = 'solid',
+                                colour = "lightgrey"),
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "lightgrey"),
+    plot.title = element_text(hjust = 0.5, vjust = -10, color = "#5a5a5a", size = 11, face = "bold"),
+    axis.title.x = element_text(color = "#5a5a5a", size = 8),
+    axis.title.y = element_text(color = "#5a5a5a", size = 8)
+  )
+
+ggplotly(e, tooltip = "count")
+```
+
+### LEARN MORE: View the dataset used to create these maps {data-commentary-width=400}
+
+```{r}
+DT::datatable(census_dt, options = list(
+  bPaginate = FALSE
+))
+```
+
+***
+
+You can download the raw data as a CSV file from our GitHub, linked in the top right of this page.
+
+
+
+
+
+<style>
+
+    .storyboard-nav .sbframelist {
+        margin: 0 auto;
+        width: 94%;
+        height: 75px;
+        overflow: hidden;
+        text-shadow: none;
+        margin-bottom: 8px;
+    }
+
+    .storyboard-nav .sbnext, .storyboard-nav .sbprev {
+        width: 2%;
+        height: 75px;
+        font-size: 50px;
+    }
+
+    </style>
