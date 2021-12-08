@@ -4,11 +4,11 @@
 scores_train <- tibble(
     `true` = as.factor(CR_dat$poor_stat),
     `preds_lasso` = predict(lasso_mod, 
-                            newdata = CR_dat, 
+                            newdata = CR_train, 
                             s = "lambda.min", 
                             type = "response")[,1],
     `preds_ridge` = predict(ridge_mod, 
-                            newdata = CR_dat, 
+                            newdata = CR_train, 
                             s = "lambda.min", 
                             type = "response")[,1]
 )
@@ -23,6 +23,7 @@ preds_train <- scores_train %>%
 # ------------------------------------------------
 # estimate confusion matrix
 # ------------------------------------------------
+library(yardstick)
 conf_mat(preds_train,
          truth = true,
          estimate = class_lasso)
@@ -62,7 +63,6 @@ calc_auc(p)
 #    considerably worse than the accuracy in the training. 
 #    Compare the AUC metric in the test versus train for the 
 #    ridge model. Is our model overfit or underfit? 
-
 
 # 6. Extra credit! Do the above using the ElasticNet model
 #    Generate predictions using the optimal value of lambda

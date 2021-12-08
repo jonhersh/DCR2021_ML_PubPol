@@ -11,10 +11,18 @@ source('code/1_data_prep.r')
 # ------------------------------------------------
 # let's summarize the IDB poverty data using the glimpse function
 
-glimpse(CR_dat)
+summary(CR_dat)
+write.csv(sum(glimpse(CR_dat)))
 
 # from https://www.kaggle.com/c/costa-rican-household-poverty-prediction/data?select=codebook.csv
 
+# write.csv(sum(glimpse(CR_dat)))
+
+# CR_dat %>% glimpse() %>% sum() %>% write.csv()
+
+glimpse(CR_dat)
+
+CR_dat %>% glimpse()
 
 # ------------------------------------------------
 # Pipe Operator!  
@@ -35,6 +43,10 @@ glimpse(CR_dat)
 # ------------------------------------------------
 # Slice function: to select ROWS 
 # ------------------------------------------------
+
+CR_dat %>% slice(100:300)
+
+
 # SLICE: slice to view only the first 10 rows
 CR_dat %>% slice(1:10)
 
@@ -46,6 +58,11 @@ CR_dat %>% slice(300:310)
 # ------------------------------------------------
 # Arrange function: to ORDER dataset
 # ------------------------------------------------
+
+CR_dat_arrange <- 
+  CR_dat %>% 
+    arrange(desc(dep_rate))
+
 
 # arrange the dataframe in descending order by mean_educ
 CR_dat %>% 
@@ -67,6 +84,13 @@ CR_dat %>%
 # ------------------------------------------------
 # SELECT columns of the dataset using the 'select' function
 # ------------------------------------------------
+CR_dat_sub <- CR_dat %>% 
+  select(poor_stat, num_rooms, num_adults) 
+
+CR_dat_sub <- CR_dat %>% 
+  select(-poor_stat)
+
+
 # select then pass to table function 
 CR_dat %>% select(poor_stat) %>% table() 
 
@@ -83,6 +107,17 @@ CR_dat %>%
 # ------------------------------------------------
 # RENAME variables using the RENAME function
 # ------------------------------------------------
+CR_dat_v2 <- 
+  CR_dat %>% 
+  rename(HHID = household_ID,
+         `poverty stat` = poor_stat)
+
+
+library('janitor')
+CR_dat_v2 <- 
+  CR_dat_v2 %>% clean_names()
+
+
 # note we must pass the DF back to the original data
 CR_dat <- CR_dat %>% 
     rename(HH_ID = household_ID) 
@@ -100,6 +135,10 @@ CR_dat <- CR_dat %>%
 # only select households with poverty status
 # and see # of rows
 CR_dat %>% 
+  filter(poor_stat == 1 & urban == 1 & num_children >= 2) %>% 
+  nrow()
+
+CR_dat %>% 
     filter(poor_stat ==  1) %>% 
     head()
 
@@ -116,6 +155,12 @@ CR_dat %>%
 # ------------------------------------------------
 # MUTATE to Transform variables in your dataset
 # ------------------------------------------------
+
+CR_dat_clean <- CR_dat %>% 
+  mutate(educ_sq = mean_educ * mean_educ, 
+         num_elderly_sq = num_elderly * num_elderly, 
+         has_children = ifelse(num_children >= 1, 1,0)) 
+
 # adding new variables using mutate()
 CR_dat <- CR_dat %>% 
     mutate(mean_educ_sq = mean_educ * mean_educ,

@@ -27,7 +27,8 @@ packages <- c(
     'rpart',
     'plotROC',
     'randomForestExplainer',
-    'caret'
+    'caret',
+    'tidymodels'
 )
 
 # install.packages(packages)
@@ -40,7 +41,7 @@ library('tidyverse')
 library('here')
 
 # from https://www.kaggle.com/c/costa-rican-household-poverty-prediction/data?select=codebook.csv
-train <- read.csv(here::here("datasets", "train.csv"))
+train <- read.csv(here::here("datasets", "train.csv")) 
 test <- read.csv(here::here("datasets", "train.csv"))
 
 CR_dat <- bind_rows(train, test)

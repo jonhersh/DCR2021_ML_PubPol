@@ -3,6 +3,7 @@
 # ------------------------------------------------
 library('tidyverse')
 library('tidymodels')
+library('rsample')
 # install.packages(packages)
 
 # uncomment and run if the CR_dat dataset is not loaded
@@ -13,6 +14,13 @@ library('tidymodels')
 # ------------------------------------------------
 # always set seed before doing anything that involves randomization
 set.seed(1818)
+
+CR_split <- initial_split(CR_dat, prop = 0.75)
+
+CR_split
+
+CR_train <- training(CR_split)
+CR_test <- testing(CR_split)
 
 # initial split is a helper function that will 
 # take a dataset and create functions to split into
@@ -33,10 +41,14 @@ lst(CR_train,CR_test) %>% purrr::map(nrow)
 # Estimate Ridge Model from data
 # ------------------------------------------------
 library('glmnetUtils')
-ridge_mod <- cv.glmnet(poor_stat ~ ., 
+ridge_mod <- glmnetUtils::cv.glmnet(poor_stat ~ ., 
                        data = CR_train %>% select(-household_ID),
                        alpha = 0, 
                        family = "binomial")
+
+coef(ridge_mod) %>% as.matrix() %>% as.data.frame() 
+
+plot(ridge_mod)
 
 # print coefficient matrix using the value of 
 # lambda that minimizes cross-validated error
@@ -55,16 +67,19 @@ coefpath(ridge_mod)
 # ------------------------------------------------
 # Estimate Lasso Model from data
 # ------------------------------------------------
-lasso_mod <- cv.glmnet(poor_stat ~ ., 
+lasso_mod <- glmnetUtils::cv.glmnet(poor_stat ~ ., 
                        data = CR_train %>% select(-household_ID),
                        alpha = 1, 
                        family = "binomial")
 
+coef(lasso_mod)
 # print coefficient matrix
 coef(lasso_mod, s = lasso_mod$lambda.1se)
 
 # plot coefficient MSE plot
 plot(lasso_mod)
+
+coefpath(lasso_mod)
 
 
 # ------------------------------------------------
@@ -75,6 +90,7 @@ enet_mod <- cva.glmnet(poor_stat ~ .,
                        alpha = seq(0,1, by = 0.1), 
                        family = "binomial")
 
+minlossplot(enet_mod, cv.type = "min")
 
 # Use this function to find the best alpha
 get_alpha <- function(fit) {
