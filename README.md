@@ -32,7 +32,7 @@ If you would like to install and run R locally please install the following prog
 
 ### Running R in a Web Browser
 
-If you cannot install those programs, please head over to [rstudio.cloud](rstudio.cloud). 
+If you cannot install those programs, please head over to [rstudio.cloud](https://rstudio.cloud). 
 
 * Click "GET STARTED FOR FREE" 
 * Then click "Sign Up". 
