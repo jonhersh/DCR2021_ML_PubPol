@@ -96,7 +96,9 @@ plot_min_depth_distribution(rf_fit, mean_sample = "top_trees")
 plot_multi_way_importance(rf_fit, size_measure = "no_of_nodes")
 
 
-plot_predict_interaction(rf_fit, CR_train, "mean_educ", "num_children")
+plot_predict_interaction(rf_fit, CR_train, "mean_educ", 
+                         "num_children", 
+                         grid = 10)
 
 # explain_forest(rf_fit, 
 #               interactions = TRUE, 
@@ -130,6 +132,20 @@ plot(rf_caret)
 #---------------------------------------------------------------
 # 1. Estimate a random forest model using mtry = 4 and 200 different trees
 # using a different model formula 
+
+rf_fit <- randomForest(poor_stat ~ ., 
+                       data = CR_train %>% 
+                         select(-household_ID) %>% 
+                         mutate(poor_stat = 
+                                  as.factor(poor_stat)), 
+                       type = classification,
+                       mtry = 7,
+                       na.action = na.roughfix,
+                       ntree = 300, 
+                       importance = TRUE)
+
+
+plot(rf_fit)
 
 # 2. Generate predictions for the test set and plot the ROC curve
 
