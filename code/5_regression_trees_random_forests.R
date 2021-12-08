@@ -18,7 +18,7 @@ poor_tree <- ctree(poor_stat ~  urban + num_children + comp + no_toilet,
 print(poor_tree)
 
 # Viewing the fitted model is easier 
-plot(poor_tree, gp)
+plot(poor_tree)
 
 
 names(CR_train)
@@ -71,6 +71,7 @@ rf_fit <- randomForest(poor_stat ~ .,
                        na.action = na.roughfix,
                        ntree = 100, 
                        importance = TRUE)
+
 
 print(rf_fit)
 
@@ -127,8 +128,8 @@ plot(rf_caret)
 #---------------------------------------------------------------
 # Exercises
 #---------------------------------------------------------------
-# 1. Estimate a random forest model using mtry = 4 on a different
-#    formula
+# 1. Estimate a random forest model using mtry = 4 and 200 different trees
+# using a different model formula 
 
 # 2. Generate predictions for the test set and plot the ROC curve
 

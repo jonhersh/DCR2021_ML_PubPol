@@ -51,13 +51,16 @@ calc_auc(p)
 # 1. Generate predicted scores using the lasso model
 #    for the test data frame (using lambda.min)
 
+
 # 2. Generate class predictions using a variety of cutoffs
+
 
 # 3. Compute confusion a confusion matrix for those various
 #    cutoff thresholds
 
 # 4. Produce an ROC plot using the lasso model predictions
 #    for the test set. 
+
 
 # 5. Our model is overfit if the accuracy in the test is 
 #    considerably worse than the accuracy in the training. 
