@@ -7,13 +7,18 @@
 
 Hello! These are the materials for the Dec 8th R and Machine Learning training. The topics covered will include:
 
-1. Intro to Machine Learning for Public Policy 
-2. Intro to [Tidyverse](https://www.tidyverse.org/) for data manipulation
-3. Regularized regression with Lasso, Ridge, and [ElasticNet](https://glmnet.stanford.edu/articles/glmnet.html)
-4. Binary classification and diagnostics
-5. Regression trees and random forests 
-6. Data Pipelines and Dashboarding in [Shiny](https://shiny.rstudio.com/) and [flexdashboard](https://pkgs.rstudio.com/flexdashboard/) 
-
+|               | **Monday, October 24<sup>th</sup>, 2022**                                      |
+| ------------- | ------------------------------------------------------------------------------ |
+| Time          | Topic                                                                          |
+| 8:30 AM       | Registration and light breakfast                                               |
+| 9:00 AM       | Opening remarks – Maria Cecilia Deza (IDB)                                     |
+| 9:10 AM       | Introductions, participants and instructor Jonathan Hersh (Chapman University) |
+| 9:30 AM.    | 1\. Introduction to R                                                          |
+| 11:00 AM      | _Lunch_                                                                        |
+| 1:00 PM       | 2\. Graphing relationships between variables using ggplot2                     |
+| 4:00 PM       | _Coffee break_                                                                 |
+| 4:15 PM       | 3\. Machine Learning overview: introduction to prediction methods              |
+| 5:30 PM       | Recap of the day, Q&A                                                          |
 
 ------
 
@@ -28,7 +33,7 @@ There are two ways you can run R and [RStudio](https://rstudio.com/), either loc
 If you would like to install and run R locally please install the following programs:
 
 * RStudio Desktop 2021.09.1+372 [link](https://www.rstudio.com/products/rstudio/download/#download)
-* R 4.1.1 [link](https://cran.r-project.org/bin/windows/base/)
+* R 4.2.1 [link](https://cran.r-project.org/bin/windows/base/)
 
 ### Running R in a Web Browser
 
